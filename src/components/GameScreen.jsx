@@ -107,7 +107,7 @@ export default function GameScreen({
 
     clearInterval(intervalRef.current);
 
-    // Reset timer asynchronously (allowed by rule)
+    // Reset timer asynchronously (React 19 safe)
     setTimeout(() => {
       setTimeLeft(60);
     }, 0);
@@ -174,13 +174,11 @@ export default function GameScreen({
           <div className="sprite">🧑</div>
         </div>
 
-        {/* CENTER */}
+        {/* CENTER QUESTION BOX */}
         <div className="question-box">
           <h2>
             {boss.emoji} {boss.name}
           </h2>
-
-          <div className="dialogue-box">{finalDialogue}</div>
 
           {gameStatus === "playing" && (
             <>
@@ -230,14 +228,17 @@ export default function GameScreen({
           )}
         </div>
 
-        {/* BOSS */}
-        <div className={`character ${bossHit ? "shake" : ""}`}>
+        {/* BOSS WITH SPEECH BUBBLE */}
+        <div className={`character ${bossHit ? "shake" : ""}`} style={{ position: "relative" }}>
+          <div className="speech-bubble">{finalDialogue}</div>
+
           <div className="health-container boss-health">
             <div
               className="health-bar"
               style={{ width: `${bossHealthPercent}%` }}
             />
           </div>
+
           <div className="sprite">{boss.emoji}</div>
         </div>
       </div>
