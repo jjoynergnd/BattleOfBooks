@@ -202,3 +202,53 @@ body {
   color: gold;
   text-shadow: 0 0 10px orange;
 }
+.dialogue-box {
+  margin-top: 10px;
+  padding: 10px;
+  background: #222;
+  border-radius: 8px;
+  font-style: italic;
+  min-height: 40px;
+}
+
+.boss-dialogue {
+  border: 2px solid crimson;
+}
+
+.timer-section {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.timer-number {
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+.timer-bar {
+  height: 15px;
+  background: #333;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.timer-fill {
+  height: 100%;
+  transition: width 1s linear;
+}
+
+.flash {
+  animation: flash 0.5s infinite;
+}
+
+@keyframes flash {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}

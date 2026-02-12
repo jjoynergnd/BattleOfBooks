@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import BossSelect from "./components/BossSelect";
 import GameScreen from "./components/GameScreen";
 import { questions } from "./data/questions";
@@ -12,55 +12,24 @@ function App() {
   const [usedQuestions, setUsedQuestions] = useState([]);
   const [gameStatus, setGameStatus] = useState("select");
 
-  console.log("APP RENDER", {
-    selectedBook,
-    bossHP,
-    playerHP,
-    gameStatus,
-  });
-
   const books = Object.keys(questions);
 
-  // 🔊 Safe sound player (uses public folder)
-  const playSound = (fileName) => {
-    try {
-      console.log("Playing sound:", fileName);
-      const audio = new Audio(`/sounds/${fileName}`);
-      audio.volume = 0.6;
-      audio.play().catch((err) =>
-        console.warn("Audio play prevented:", err)
-      );
-    } catch (err) {
-      console.warn("Sound error:", err);
-    }
-  };
+  const playSound = useCallback((fileName) => {
+    const audio = new Audio(`/sounds/${fileName}`);
+    audio.volume = 0.6;
+    audio.play().catch(() => {});
+  }, []);
 
-  const getRandomQuestion = (book, used) => {
-    console.log("Getting question for:", book);
-
-    if (!questions[book]) {
-      console.error("No questions found for book:", book);
-      return null;
-    }
-
+  const getRandomQuestion = useCallback((book, used) => {
     const available = questions[book].filter(
       (q) => !used.includes(q.question)
     );
+    if (available.length === 0) return null;
+    return available[Math.floor(Math.random() * available.length)];
+  }, []);
 
-    if (available.length === 0) {
-      console.warn("No available questions left");
-      return null;
-    }
-
-    const random =
-      available[Math.floor(Math.random() * available.length)];
-
-    console.log("Selected question:", random.question);
-    return random;
-  };
-
-  const startGame = (book) => {
-    console.log("Starting game for:", book);
+  const startGame = useCallback((book) => {
+    playSound("loading.mp3");
 
     setSelectedBook(book);
     setBossHP(5);
@@ -71,73 +40,88 @@ function App() {
     setCurrentQuestion(firstQ);
 
     setGameStatus("playing");
-  };
+  }, [getRandomQuestion, playSound]);
 
-  const handleAnswer = (input) => {
-    if (!currentQuestion || gameStatus !== "playing") {
-      console.warn("Answer ignored — not in playing state");
-      return null;
-    }
+  const handleAnswer = useCallback(
+    (input) => {
+      if (!currentQuestion || gameStatus !== "playing") return null;
 
-    const normalized = input.toLowerCase().trim();
-    const correctAnswer = currentQuestion.answer.toLowerCase();
+      // TIMEOUT
+      if (input === "__timeout__") {
+        const newHP = playerHP - 1;
+        setPlayerHP(newHP);
+        playSound("hurt.mp3");
 
-    console.log("Player answered:", normalized);
-    console.log("Correct answer:", correctAnswer);
+        if (newHP <= 0) {
+          playSound("lost.mp3");
+          setGameStatus("lose");
+        }
 
-    let result = null;
-
-    if (normalized === correctAnswer) {
-      const newBossHP = bossHP - 1;
-      console.log("Correct! Boss HP →", newBossHP);
-
-      setBossHP(newBossHP);
-      result = "boss";
-
-      playSound("hit.mp3");
-
-      if (newBossHP <= 0) {
-        console.log("Boss defeated!");
-        setGameStatus("win");
-        playSound("win.mp3");
+        return "player";
       }
-    } else {
-      const newPlayerHP = playerHP - 1;
-      console.log("Wrong! Player HP →", newPlayerHP);
 
-      setPlayerHP(newPlayerHP);
-      result = "player";
+      const normalized = input.toLowerCase().trim();
+      const correctAnswer = currentQuestion.answer.toLowerCase();
 
-      playSound("hurt.mp3");
+      let result = null;
 
-      if (newPlayerHP <= 0) {
-        console.log("Player defeated!");
-        setGameStatus("lose");
+      // CORRECT
+      if (normalized === correctAnswer) {
+        const newBossHP = bossHP - 1;
+        setBossHP(newBossHP);
+        playSound("hit.mp3");
+        result = "boss";
+
+        if (newBossHP <= 0) {
+          playSound("win.mp3");
+          setGameStatus("win");
+        }
+      } else {
+        // WRONG
+        const newHP = playerHP - 1;
+        setPlayerHP(newHP);
+        playSound("hurt.mp3");
+        result = "player";
+
+        if (newHP <= 0) {
+          playSound("lost.mp3");
+          setGameStatus("lose");
+        }
       }
-    }
 
-    const updatedUsed = [...usedQuestions, currentQuestion.question];
-    setUsedQuestions(updatedUsed);
+      // Mark question used
+      const updatedUsed = [...usedQuestions, currentQuestion.question];
+      setUsedQuestions(updatedUsed);
 
-    if (
-      (result === "boss" && bossHP - 1 > 0) ||
-      (result === "player" && playerHP - 1 > 0)
-    ) {
-      const nextQ = getRandomQuestion(selectedBook, updatedUsed);
-      setCurrentQuestion(nextQ);
-    }
+      // Load next question if still alive
+      if (
+        (result === "boss" && bossHP - 1 > 0) ||
+        (result === "player" && playerHP - 1 > 0)
+      ) {
+        const nextQ = getRandomQuestion(selectedBook, updatedUsed);
+        setCurrentQuestion(nextQ);
+      }
 
-    return result;
-  };
+      return result;
+    },
+    [
+      bossHP,
+      playerHP,
+      currentQuestion,
+      gameStatus,
+      usedQuestions,
+      selectedBook,
+      getRandomQuestion,
+      playSound
+    ]
+  );
 
-  const restart = () => {
-    console.log("Restarting game");
-
+  const restart = useCallback(() => {
     setGameStatus("select");
     setSelectedBook(null);
     setCurrentQuestion(null);
     setUsedQuestions([]);
-  };
+  }, []);
 
   return (
     <>

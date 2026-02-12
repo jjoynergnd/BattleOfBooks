@@ -1,4 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback
+} from "react";
+
+import { bosses } from "../data/bosses";
+import { playerLines } from "../data/playerLines";
 
 export default function GameScreen({
   selectedBook,
@@ -9,68 +18,153 @@ export default function GameScreen({
   gameStatus,
   onRestart
 }) {
+  /* ---------------- BOSS DATA ---------------- */
+  const boss = useMemo(() => {
+    return (
+      bosses[selectedBook] || {
+        name: "Mysterious Boss",
+        emoji: "👹",
+        intro: "Prepare for battle!",
+        taunts: ["Tick... tock..."],
+        hitLines: ["You dare?"],
+        defeat: "Impossible...",
+        victory: "You were no match."
+      }
+    );
+  }, [selectedBook]);
+
+  /* ---------------- LOCAL STATE ---------------- */
   const [input, setInput] = useState("");
+  const [dialogue, setDialogue] = useState(boss.intro);
   const [bossHit, setBossHit] = useState(false);
   const [playerHit, setPlayerHit] = useState(false);
   const [rumble, setRumble] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(60);
 
-  // Intro auto-hide
+  /* ---------------- REFS ---------------- */
+  const intervalRef = useRef(null);
+  const onAnswerRef = useRef(onAnswer);
+  const bossRef = useRef(boss);
+
+  const tickSoundRef = useRef(null);
+  const timeUpSoundRef = useRef(null);
+
+  /* Keep refs updated */
   useEffect(() => {
-    const timer = setTimeout(() => setShowIntro(false), 2000);
-    return () => clearTimeout(timer);
+    onAnswerRef.current = onAnswer;
+  }, [onAnswer]);
+
+  useEffect(() => {
+    bossRef.current = boss;
+  }, [boss]);
+
+  /* Initialize sounds once */
+  useEffect(() => {
+    tickSoundRef.current = new Audio("/sounds/tick.mp3");
+    tickSoundRef.current.volume = 0.3;
+
+    timeUpSoundRef.current = new Audio("/sounds/timeup.mp3");
+    timeUpSoundRef.current.volume = 0.5;
   }, []);
 
-  const triggerRumble = () => {
+  /* ---------------- HIT EFFECTS ---------------- */
+  const triggerBossHit = useCallback(() => {
+    setBossHit(true);
+    setDialogue(
+      playerLines.correct[
+        Math.floor(Math.random() * playerLines.correct.length)
+      ]
+    );
     setRumble(true);
-    setTimeout(() => setRumble(false), 300);
-  };
 
-  const triggerHit = (type) => {
-    if (type === "boss") {
-      setBossHit(true);
-      setTimeout(() => setBossHit(false), 300);
+    setTimeout(() => {
+      setBossHit(false);
+      setRumble(false);
+    }, 300);
+  }, []);
+
+  const triggerPlayerHit = useCallback(() => {
+    setPlayerHit(true);
+    setDialogue(
+      playerLines.wrong[
+        Math.floor(Math.random() * playerLines.wrong.length)
+      ]
+    );
+    setRumble(true);
+
+    setTimeout(() => {
+      setPlayerHit(false);
+      setRumble(false);
+    }, 300);
+  }, []);
+
+  /* ---------------- TIMER INTERVAL EFFECT ---------------- */
+  useEffect(() => {
+    if (gameStatus !== "playing") {
+      clearInterval(intervalRef.current);
+      return;
     }
 
-    if (type === "player") {
-      setPlayerHit(true);
-      setTimeout(() => setPlayerHit(false), 300);
-    }
+    clearInterval(intervalRef.current);
 
-    triggerRumble();
-  };
+    // Reset timer asynchronously (allowed by rule)
+    setTimeout(() => {
+      setTimeLeft(60);
+    }, 0);
 
+    intervalRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev === 11) {
+          tickSoundRef.current?.play();
+          const taunts = bossRef.current.taunts;
+          setDialogue(taunts[Math.floor(Math.random() * taunts.length)]);
+        }
+
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          timeUpSoundRef.current?.play();
+          triggerPlayerHit();
+          onAnswerRef.current("__timeout__");
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(intervalRef.current);
+  }, [question, gameStatus, triggerPlayerHit]);
+
+  /* ---------------- SUBMIT ---------------- */
   const handleSubmit = () => {
     if (!input.trim()) return;
 
     const result = onAnswer(input);
 
-    if (result) {
-      triggerHit(result);
-    }
+    if (result === "boss") triggerBossHit();
+    if (result === "player") triggerPlayerHit();
 
     setInput("");
   };
 
+  /* ---------------- WIN / LOSE DIALOGUE ---------------- */
+  const finalDialogue =
+    gameStatus === "win"
+      ? boss.defeat
+      : gameStatus === "lose"
+      ? boss.victory
+      : dialogue;
+
+  /* ---------------- UI CALCULATIONS ---------------- */
   const playerHealthPercent = (playerHP / 3) * 100;
   const bossHealthPercent = (bossHP / 5) * 100;
-
-  const introQuotes = {
-    "The Lightning Thief (Percy Jackson & the Olympians)":
-      "⚡ You dare challenge the gods, half-blood?",
-    default: "Prepare for battle!"
-  };
+  const timerPercent = (timeLeft / 60) * 100;
 
   return (
     <div className="game-container">
       <div className={`arena ${rumble ? "rumble" : ""}`}>
-
-        {/* Player */}
-        <div
-          className={`character ${playerHit ? "shake" : ""} ${
-            gameStatus === "lose" ? "fall" : ""
-          }`}
-        >
+        {/* PLAYER */}
+        <div className={`character ${playerHit ? "shake" : ""}`}>
           <div className="health-container">
             <div
               className="health-bar"
@@ -80,23 +174,43 @@ export default function GameScreen({
           <div className="sprite">🧑</div>
         </div>
 
-        {/* Center */}
+        {/* CENTER */}
         <div className="question-box">
-          {showIntro && gameStatus === "playing" && (
-            <h3 className="boss-intro">
-              {introQuotes[selectedBook] || introQuotes.default}
-            </h3>
-          )}
+          <h2>
+            {boss.emoji} {boss.name}
+          </h2>
 
-          {!showIntro && gameStatus === "playing" && (
+          <div className="dialogue-box">{finalDialogue}</div>
+
+          {gameStatus === "playing" && (
             <>
-              <h3>{selectedBook}</h3>
-              <h2>{question?.question}</h2>
+              <div className="timer-number">{timeLeft}s</div>
+
+              <div className="timer-bar">
+                <div
+                  className={`timer-fill ${
+                    timeLeft <= 10 ? "flash" : ""
+                  }`}
+                  style={{
+                    width: `${timerPercent}%`,
+                    background:
+                      timeLeft <= 10
+                        ? "red"
+                        : timeLeft <= 20
+                        ? "orange"
+                        : "limegreen"
+                  }}
+                />
+              </div>
+
+              <h3>{question?.question}</h3>
+
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type answer..."
               />
+
               <button onClick={handleSubmit}>Attack!</button>
             </>
           )}
@@ -116,19 +230,15 @@ export default function GameScreen({
           )}
         </div>
 
-        {/* Boss */}
-        <div
-          className={`character ${bossHit ? "shake" : ""} ${
-            gameStatus === "win" ? "fall" : ""
-          }`}
-        >
+        {/* BOSS */}
+        <div className={`character ${bossHit ? "shake" : ""}`}>
           <div className="health-container boss-health">
             <div
               className="health-bar"
               style={{ width: `${bossHealthPercent}%` }}
             />
           </div>
-          <div className="sprite">👹</div>
+          <div className="sprite">{boss.emoji}</div>
         </div>
       </div>
 
