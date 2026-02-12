@@ -1,0 +1,204 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(circle at center, #2b0000, #140000);
+  color: white;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* SELECT SCREEN */
+
+.select-screen {
+  padding: 50px;
+}
+
+.game-title {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  text-shadow: 0 0 15px red;
+}
+
+.book-grid {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.book-button {
+  padding: 12px 20px;
+  background: #550000;
+  border: 2px solid red;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.book-button:hover {
+  background: red;
+  transform: scale(1.05);
+}
+
+/* ARENA */
+
+.game-container {
+  position: relative;
+  height: 100vh;
+}
+
+.arena {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 50px;
+  height: 80%;
+}
+
+/* CHARACTERS */
+
+.character {
+  width: 150px;
+  transition: transform 0.2s;
+}
+
+.sprite {
+  font-size: 4rem;
+  margin: 10px 0;
+}
+
+/* HEALTH BARS */
+
+.health-container {
+  width: 120px;
+  height: 15px;
+  background: #333;
+  border: 2px solid white;
+  margin: 0 auto 10px auto;
+}
+
+.health-bar {
+  height: 100%;
+  background: limegreen;
+  transition: width 0.3s ease;
+}
+
+.boss-health .health-bar {
+  background: crimson;
+}
+
+/* QUESTION BOX */
+
+.question-box {
+  width: 320px;
+  padding: 20px;
+  background: #1c1c1c;
+  border: 2px solid red;
+  box-shadow: 0 0 15px red;
+}
+
+.question-box input {
+  padding: 8px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.question-box button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  cursor: pointer;
+  background: red;
+  border: none;
+  color: white;
+}
+
+/* DAMAGE EFFECT */
+
+.shake {
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* FALL */
+
+.fall {
+  animation: fallDown 1s forwards;
+}
+
+@keyframes fallDown {
+  to {
+    transform: translateY(300px);
+    opacity: 0;
+  }
+}
+
+/* LAVA */
+
+.lava {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 120px;
+  background: linear-gradient(to top, red, orange);
+  animation: glow 1.5s infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* SCREEN RUMBLE */
+
+.rumble {
+  animation: rumble 0.3s;
+}
+
+@keyframes rumble {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-5px, 5px);
+  }
+  40% {
+    transform: translate(5px, -5px);
+  }
+  60% {
+    transform: translate(-5px, 5px);
+  }
+  80% {
+    transform: translate(5px, -5px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* INTRO TEXT */
+
+.boss-intro {
+  font-size: 1.3rem;
+  color: gold;
+  text-shadow: 0 0 10px orange;
+}
