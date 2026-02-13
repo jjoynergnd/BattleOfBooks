@@ -1,7 +1,6 @@
 /* -------------------------------------------------- */
 /* GLOBAL STYLES */
 /* -------------------------------------------------- */
-
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -14,7 +13,6 @@ body {
 /* -------------------------------------------------- */
 /* SELECT SCREEN */
 /* -------------------------------------------------- */
-
 .select-screen {
   padding: 50px;
 }
@@ -49,7 +47,6 @@ body {
 /* -------------------------------------------------- */
 /* ARENA */
 /* -------------------------------------------------- */
-
 .game-container {
   position: relative;
   height: 100vh;
@@ -66,11 +63,11 @@ body {
 /* -------------------------------------------------- */
 /* CHARACTERS */
 /* -------------------------------------------------- */
-
 .character {
   width: 150px;
   transition: transform 0.2s;
   position: relative;
+  transform: translateY(-20px);
 }
 
 .sprite {
@@ -81,13 +78,13 @@ body {
 /* -------------------------------------------------- */
 /* HEALTH BARS */
 /* -------------------------------------------------- */
-
 .health-container {
   width: 120px;
   height: 15px;
   background: #333;
   border: 2px solid white;
   margin: 0 auto 10px auto;
+  overflow: hidden;
 }
 
 .health-bar {
@@ -103,7 +100,6 @@ body {
 /* -------------------------------------------------- */
 /* QUESTION BOX */
 /* -------------------------------------------------- */
-
 .question-box {
   width: 320px;
   padding: 20px;
@@ -130,7 +126,6 @@ body {
 /* -------------------------------------------------- */
 /* DAMAGE EFFECTS */
 /* -------------------------------------------------- */
-
 .shake {
   animation: shake 0.3s;
 }
@@ -167,7 +162,6 @@ body {
 /* -------------------------------------------------- */
 /* LAVA */
 /* -------------------------------------------------- */
-
 .lava {
   position: absolute;
   bottom: 0;
@@ -189,7 +183,6 @@ body {
 /* -------------------------------------------------- */
 /* SCREEN RUMBLE */
 /* -------------------------------------------------- */
-
 .rumble {
   animation: rumble 0.3s;
 }
@@ -218,7 +211,6 @@ body {
 /* -------------------------------------------------- */
 /* TIMER */
 /* -------------------------------------------------- */
-
 .timer-number {
   font-size: 20px;
   margin-bottom: 5px;
@@ -255,7 +247,6 @@ body {
 /* -------------------------------------------------- */
 /* BOSS SPEECH BUBBLE */
 /* -------------------------------------------------- */
-
 .speech-bubble {
   position: absolute;
   top: -40px;
@@ -286,7 +277,6 @@ body {
 /* -------------------------------------------------- */
 /* PLAYER SPEECH BUBBLE */
 /* -------------------------------------------------- */
-
 .player-speech-bubble {
   position: absolute;
   top: -40px;
@@ -341,7 +331,6 @@ body {
 /* -------------------------------------------------- */
 /* PAUSE + BACK BUTTONS */
 /* -------------------------------------------------- */
-
 .controls-row {
   display: flex;
   justify-content: center;
@@ -364,4 +353,27 @@ body {
 .back-button:hover {
   background: red;
   transform: scale(1.05);
+}
+
+/* -------------------------------------------------- */
+/* SCORE SUMMARY */
+/* -------------------------------------------------- */
+.score-summary {
+  margin-top: 16px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #2a0000;
+  border: 2px solid #ffcc00;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+}
+
+.score-main {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.score-sub {
+  font-size: 0.9rem;
+  color: #ffdd88;
 }

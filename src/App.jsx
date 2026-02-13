@@ -13,6 +13,10 @@ function App() {
   const [usedQuestions, setUsedQuestions] = useState([]);
   const [gameStatus, setGameStatus] = useState("select");
 
+  // NEW: score tracking
+  const [correctCount, setCorrectCount] = useState(0);
+  const [questionCount, setQuestionCount] = useState(0);
+
   const books = Object.keys(questions);
 
   const playSound = useCallback((fileName) => {
@@ -33,13 +37,14 @@ function App() {
     (book) => {
       playSound("loading.mp3");
       setSelectedBook(book);
-      setBossHP(5);
-      setPlayerHP(3);
+      setBossHP(8);
+      setPlayerHP(4);
       setUsedQuestions([]);
+      setCorrectCount(0);
+      setQuestionCount(0);
 
       const firstQ = getRandomQuestion(book, []);
       setCurrentQuestion(firstQ);
-
       setGameStatus("playing");
     },
     [getRandomQuestion, playSound]
@@ -54,6 +59,9 @@ function App() {
         const newHP = playerHP - 1;
         setPlayerHP(newHP);
         playSound("hurt.mp3");
+
+        // Count as a question attempted
+        setQuestionCount((prev) => prev + 1);
 
         if (newHP <= 0) {
           playSound("lost.mp3");
@@ -74,6 +82,9 @@ function App() {
         playSound("hit.mp3");
         result = "boss";
 
+        setCorrectCount((prev) => prev + 1);
+        setQuestionCount((prev) => prev + 1);
+
         if (newBossHP <= 0) {
           playSound("win.mp3");
           setGameStatus("win");
@@ -84,6 +95,8 @@ function App() {
         setPlayerHP(newHP);
         playSound("hurt.mp3");
         result = "player";
+
+        setQuestionCount((prev) => prev + 1);
 
         if (newHP <= 0) {
           playSound("lost.mp3");
@@ -124,6 +137,8 @@ function App() {
     setSelectedBook(null);
     setCurrentQuestion(null);
     setUsedQuestions([]);
+    setCorrectCount(0);
+    setQuestionCount(0);
   }, []);
 
   return (
@@ -141,6 +156,8 @@ function App() {
           onAnswer={handleAnswer}
           gameStatus={gameStatus}
           onRestart={restart}
+          correctCount={correctCount}
+          questionCount={questionCount}
         />
       )}
     </>

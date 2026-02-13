@@ -6,7 +6,6 @@ import React, {
   useMemo,
   useCallback
 } from "react";
-
 import { bosses } from "../data/bosses";
 import { playerLines } from "../data/playerLines";
 
@@ -17,7 +16,9 @@ export default function GameScreen({
   question,
   onAnswer,
   gameStatus,
-  onRestart
+  onRestart,
+  correctCount,
+  questionCount
 }) {
   /* ---------------- BOSS DATA ---------------- */
   const boss = useMemo(() => {
@@ -49,7 +50,7 @@ export default function GameScreen({
   // Pause
   const [isPaused, setIsPaused] = useState(false);
 
-  // NEW: Show correct answer feedback
+  // Show correct answer feedback
   const [lastResult, setLastResult] = useState(null);
 
   /* ---------------- REFS ---------------- */
@@ -77,7 +78,6 @@ export default function GameScreen({
   useEffect(() => {
     tickSoundRef.current = new Audio("/sounds/tick.mp3");
     tickSoundRef.current.volume = 0.3;
-
     timeUpSoundRef.current = new Audio("/sounds/timeup.mp3");
     timeUpSoundRef.current.volume = 0.5;
   }, []);
@@ -187,7 +187,7 @@ export default function GameScreen({
 
     const result = onAnswer(input);
 
-    // NEW: Show correct answer feedback
+    // Show correct answer feedback
     if (result === "boss") {
       setLastResult({
         correct: true,
@@ -207,16 +207,11 @@ export default function GameScreen({
 
   /* Reset result box when question changes */
   useEffect(() => {
-    // Give time for the player to read the result
     const id = setTimeout(() => {
       setLastResult(null);
-    }, 1800); // matches your speech bubble timing
-
+    }, 1800);
     return () => clearTimeout(id);
   }, [question]);
-
-
-
 
   /* ---------------- PAUSE / BACK ---------------- */
   const handleTogglePause = () => {
@@ -240,10 +235,14 @@ export default function GameScreen({
 
   /* ---------------- UI CALCULATIONS ---------------- */
   const playerHealthPercent = (playerHP / 3) * 100;
-  const bossHealthPercent = (bossHP / 5) * 100;
+  const bossHealthPercent = (bossHP / 8) * 100;
   const timerPercent = (timeLeft / 60) * 100;
-
   const isPlaying = gameStatus === "playing";
+
+  const hasQuestions = questionCount > 0;
+  const scorePercent = hasQuestions
+    ? Math.round((correctCount / questionCount) * 100)
+    : 0;
 
   return (
     <div className="game-container">
@@ -259,9 +258,7 @@ export default function GameScreen({
               style={{ width: `${playerHealthPercent}%` }}
             />
           </div>
-
           <div className="sprite">🧑</div>
-
           {showPlayerBubble && (
             <div className="player-speech-bubble">{playerDialogue}</div>
           )}
@@ -276,7 +273,6 @@ export default function GameScreen({
           {isPlaying && (
             <>
               <div className="timer-number">{timeLeft}s</div>
-
               <div className="timer-bar">
                 <div
                   className={`timer-fill ${
@@ -301,21 +297,21 @@ export default function GameScreen({
                 >
                   {isPaused ? "Resume" : "Pause"}
                 </button>
-
-                <button className="back-button" onClick={handleBackToBooks}>
+                <button
+                  className="back-button"
+                  onClick={handleBackToBooks}
+                >
                   Back to Books
                 </button>
               </div>
 
               <h3>{question?.question}</h3>
-
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type answer..."
                 disabled={isPaused}
               />
-
               <button
                 onClick={handleSubmit}
                 disabled={isPaused || !input.trim()}
@@ -323,7 +319,6 @@ export default function GameScreen({
                 Attack!
               </button>
 
-              {/* NEW: Correct Answer Feedback */}
               {lastResult && (
                 <div
                   style={{
@@ -342,6 +337,22 @@ export default function GameScreen({
                 </div>
               )}
             </>
+          )}
+
+          {/* END-OF-GAME SCORE SUMMARY */}
+          {(gameStatus === "win" || gameStatus === "lose") && (
+            <div className="score-summary">
+              <div className="score-main">
+                {hasQuestions
+                  ? `${correctCount}/${questionCount} – ${scorePercent}%`
+                  : "No questions answered"}
+              </div>
+              <div className="score-sub">
+                {gameStatus === "win"
+                  ? "Nice work! You crushed that boss!"
+                  : "Tough battle! Want to try again?"}
+              </div>
+            </div>
           )}
 
           {gameStatus === "win" && (
@@ -365,15 +376,29 @@ export default function GameScreen({
           style={{ position: "relative" }}
         >
           <div className="speech-bubble">{finalDialogue}</div>
-
           <div className="health-container boss-health">
             <div
               className="health-bar"
               style={{ width: `${bossHealthPercent}%` }}
             />
           </div>
+          <div className="sprite">
+            {boss.image ? (
+              <img
+                src={boss.image}
+                alt={boss.name}
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  objectFit: "contain",
+                  pointerEvents: "none"
+                }}
+              />
+            ) : (
+              boss.emoji
+            )}
+          </div>
 
-          <div className="sprite">{boss.emoji}</div>
         </div>
       </div>
 
