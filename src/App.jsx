@@ -7,13 +7,12 @@ import "./styles/game.css";
 
 function App() {
   const [selectedBook, setSelectedBook] = useState(null);
-  const [bossHP, setBossHP] = useState(5);
+  const [bossHP, setBossHP] = useState(8);
   const [playerHP, setPlayerHP] = useState(3);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [usedQuestions, setUsedQuestions] = useState([]);
   const [gameStatus, setGameStatus] = useState("select");
 
-  // NEW: score tracking
   const [correctCount, setCorrectCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
 
@@ -38,7 +37,7 @@ function App() {
       playSound("loading.mp3");
       setSelectedBook(book);
       setBossHP(8);
-      setPlayerHP(4);
+      setPlayerHP(3);
       setUsedQuestions([]);
       setCorrectCount(0);
       setQuestionCount(0);
@@ -60,7 +59,6 @@ function App() {
         setPlayerHP(newHP);
         playSound("hurt.mp3");
 
-        // Count as a question attempted
         setQuestionCount((prev) => prev + 1);
 
         if (newHP <= 0) {
@@ -75,7 +73,6 @@ function App() {
 
       let result = null;
 
-      // CORRECT
       if (normalized === correctAnswer) {
         const newBossHP = bossHP - 1;
         setBossHP(newBossHP);
@@ -90,7 +87,6 @@ function App() {
           setGameStatus("win");
         }
       } else {
-        // WRONG
         const newHP = playerHP - 1;
         setPlayerHP(newHP);
         playSound("hurt.mp3");
@@ -104,11 +100,9 @@ function App() {
         }
       }
 
-      // Mark question used
       const updatedUsed = [...usedQuestions, currentQuestion.question];
       setUsedQuestions(updatedUsed);
 
-      // Load next question if still alive
       if (
         (result === "boss" && bossHP - 1 > 0) ||
         (result === "player" && playerHP - 1 > 0)
@@ -131,8 +125,34 @@ function App() {
     ]
   );
 
+  const handleChallengeAnswer = useCallback(
+    (isCorrect) => {
+      if (gameStatus !== "playing") return;
+
+      if (isCorrect) {
+        const damage = Math.ceil(bossHP / 2);
+        const newBossHP = bossHP - damage;
+        setBossHP(newBossHP);
+        playSound("hit.mp3");
+
+        setCorrectCount((prev) => prev + 1);
+        setQuestionCount((prev) => prev + 1);
+
+        if (newBossHP <= 0) {
+          playSound("win.mp3");
+          setGameStatus("win");
+        }
+      } else {
+        setPlayerHP(0);
+        setQuestionCount((prev) => prev + 1);
+        playSound("lost.mp3");
+        setGameStatus("lose");
+      }
+    },
+    [bossHP, gameStatus, playSound]
+  );
+
   const restart = useCallback(() => {
-    // Reset everything for a clean return to select screen
     setGameStatus("select");
     setSelectedBook(null);
     setCurrentQuestion(null);
@@ -158,6 +178,7 @@ function App() {
           onRestart={restart}
           correctCount={correctCount}
           questionCount={questionCount}
+          onChallengeAnswer={handleChallengeAnswer}
         />
       )}
     </>

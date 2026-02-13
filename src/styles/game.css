@@ -67,12 +67,26 @@ body {
   width: 150px;
   transition: transform 0.2s;
   position: relative;
+}
+
+.player-character {
   transform: translateY(-20px);
+}
+
+.boss-character {
+  transform: translateY(-10px);
 }
 
 .sprite {
   font-size: 4rem;
   margin: 10px 0;
+}
+
+/* Player body image */
+.player-body {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
 }
 
 /* -------------------------------------------------- */
@@ -262,7 +276,6 @@ body {
   border: 2px solid red;
 }
 
-/* Tail */
 .speech-bubble::after {
   content: "";
   position: absolute;
@@ -295,7 +308,6 @@ body {
     floatUp 1s ease-out forwards;
 }
 
-/* Tail */
 .player-speech-bubble::after {
   content: "";
   position: absolute;
@@ -307,7 +319,6 @@ body {
   border-color: transparent #fff transparent transparent;
 }
 
-/* Animations */
 @keyframes popIn {
   0% {
     transform: scale(0.5);
@@ -376,4 +387,117 @@ body {
 .score-sub {
   font-size: 0.9rem;
   color: #ffdd88;
+}
+
+/* -------------------------------------------------- */
+/* RESULT BANNER */
+/* -------------------------------------------------- */
+.result-banner {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 2px solid white;
+  color: white;
+  font-weight: bold;
+}
+
+/* -------------------------------------------------- */
+/* PROJECTILE */
+/* -------------------------------------------------- */
+.projectile {
+  width: 20px;
+  height: 20px;
+  background: yellow;
+  border-radius: 50%;
+  position: absolute;
+  top: 40px;
+  left: 80px;
+  animation: shoot 0.4s linear forwards;
+  box-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+}
+
+@keyframes shoot {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(260px);
+  }
+}
+
+/* -------------------------------------------------- */
+/* BOSS SPRITE ANIMATIONS */
+/* -------------------------------------------------- */
+.boss-sprite {
+  transition: transform 0.2s ease;
+}
+
+.boss-attack {
+  animation: lunge 0.4s ease;
+}
+
+@keyframes lunge {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  50% {
+    transform: translateX(-40px) scale(1.1);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* -------------------------------------------------- */
+/* BOSS CHALLENGE */
+/* -------------------------------------------------- */
+.challenge-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0 12px 0;
+}
+
+.challenge-button {
+  padding: 6px 10px;
+  background: #4b0082;
+  border: 2px solid #ffcc00;
+  color: #ffec8b;
+  cursor: pointer;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.6);
+}
+
+.challenge-button:hover {
+  background: #6a0dad;
+  transform: scale(1.05);
+}
+
+.challenge-decline {
+  padding: 6px 10px;
+  background: #333;
+  border: 2px solid #888;
+  color: #eee;
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.challenge-decline:hover {
+  background: #555;
+}
+
+.challenge-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #ffdd55;
+  text-shadow: 0 0 8px rgba(255, 221, 85, 0.7);
+}
+
+.challenge-description {
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+  color: #ffddaa;
 }

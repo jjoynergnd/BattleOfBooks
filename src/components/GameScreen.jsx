@@ -1,4 +1,5 @@
 // src/components/GameScreen.jsx
+
 import React, {
   useState,
   useEffect,
@@ -8,6 +9,7 @@ import React, {
 } from "react";
 import { bosses } from "../data/bosses";
 import { playerLines } from "../data/playerLines";
+import { questions } from "../data/questions";
 
 export default function GameScreen({
   selectedBook,
@@ -18,7 +20,8 @@ export default function GameScreen({
   gameStatus,
   onRestart,
   correctCount,
-  questionCount
+  questionCount,
+  onChallengeAnswer
 }) {
   /* ---------------- BOSS DATA ---------------- */
   const boss = useMemo(() => {
@@ -43,15 +46,22 @@ export default function GameScreen({
   const [rumble, setRumble] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
 
-  // Player bubble
   const [playerDialogue, setPlayerDialogue] = useState("");
   const [showPlayerBubble, setShowPlayerBubble] = useState(false);
 
-  // Pause
   const [isPaused, setIsPaused] = useState(false);
-
-  // Show correct answer feedback
   const [lastResult, setLastResult] = useState(null);
+
+  // Animations
+  const [projectileActive, setProjectileActive] = useState(false);
+  const [bossScale, setBossScale] = useState(1);
+  const [bossAttacking, setBossAttacking] = useState(false);
+
+  // Boss Challenge
+  const [challengeReady, setChallengeReady] = useState(false);
+  const [challengeActive, setChallengeActive] = useState(false);
+  const [challengeQuestion, setChallengeQuestion] = useState(null);
+  const [challengeInput, setChallengeInput] = useState("");
 
   /* ---------------- REFS ---------------- */
   const intervalRef = useRef(null);
@@ -61,7 +71,6 @@ export default function GameScreen({
   const tickSoundRef = useRef(null);
   const timeUpSoundRef = useRef(null);
 
-  /* Keep refs updated */
   useEffect(() => {
     onAnswerRef.current = onAnswer;
   }, [onAnswer]);
@@ -74,7 +83,6 @@ export default function GameScreen({
     isPausedRef.current = isPaused;
   }, [isPaused]);
 
-  /* Initialize sounds once */
   useEffect(() => {
     tickSoundRef.current = new Audio("/sounds/tick.mp3");
     tickSoundRef.current.volume = 0.3;
@@ -100,6 +108,11 @@ export default function GameScreen({
         hitLines[Math.floor(Math.random() * hitLines.length)];
       setDialogue(bossLine);
     }
+
+    setProjectileActive(true);
+    setTimeout(() => {
+      setProjectileActive(false);
+    }, 400);
 
     setTimeout(() => {
       setBossHit(false);
@@ -129,6 +142,12 @@ export default function GameScreen({
       setDialogue(bossLine);
     }
 
+    setBossScale((prev) => Math.min(prev + 0.1, 1.6));
+    setBossAttacking(true);
+    setTimeout(() => {
+      setBossAttacking(false);
+    }, 400);
+
     setTimeout(() => {
       setPlayerHit(false);
       setRumble(false);
@@ -148,14 +167,13 @@ export default function GameScreen({
 
     clearInterval(intervalRef.current);
 
-    // Reset timer safely
     setTimeout(() => {
       setTimeLeft(60);
     }, 0);
 
     intervalRef.current = setInterval(() => {
       setTimeLeft((prev) => {
-        if (isPausedRef.current) return prev;
+        if (isPausedRef.current || challengeActive) return prev;
 
         if (prev === 11) {
           tickSoundRef.current?.play();
@@ -179,15 +197,40 @@ export default function GameScreen({
     }, 1000);
 
     return () => clearInterval(intervalRef.current);
-  }, [question, gameStatus, triggerPlayerHit]);
+  }, [question, gameStatus, triggerPlayerHit, challengeActive]);
 
-  /* ---------------- SUBMIT ---------------- */
+ /* ---------------- BOSS CHALLENGE TIMER ---------------- */
+  useEffect(() => {
+    if (gameStatus !== "playing") {
+      // React 19 StrictMode-safe reset
+      Promise.resolve().then(() => {
+        setChallengeReady(false);
+        setChallengeActive(false);
+      });
+      return;
+    }
+
+    // If already in a challenge, do not schedule a new one
+    if (challengeActive) return;
+
+    // Random delay for Boss Challenge (10–25 seconds)
+    const delay = Math.random() * 15000 + 10000;
+
+    const id = setTimeout(() => {
+      setChallengeReady(true);
+    }, delay);
+
+    return () => clearTimeout(id);
+  }, [gameStatus, question, challengeActive]);
+
+
+  /* ---------------- SUBMIT NORMAL ---------------- */
   const handleSubmit = () => {
     if (!input.trim() || isPaused || gameStatus !== "playing") return;
+    if (challengeActive) return;
 
     const result = onAnswer(input);
 
-    // Show correct answer feedback
     if (result === "boss") {
       setLastResult({
         correct: true,
@@ -205,17 +248,67 @@ export default function GameScreen({
     setInput("");
   };
 
-  /* Reset result box when question changes */
+  /* ---------------- BOSS CHALLENGE ---------------- */
+  const startChallenge = () => {
+    if (!selectedBook || !questions[selectedBook]) return;
+    const pool = questions[selectedBook];
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    setChallengeQuestion(q);
+    setChallengeActive(true);
+    setChallengeReady(false);
+    setIsPaused(true);
+    setChallengeInput("");
+    setLastResult(null);
+  };
+
+  const declineChallenge = () => {
+    const taunts = bossRef.current.taunts || [];
+    if (taunts.length > 0) {
+      const bossLine =
+        taunts[Math.floor(Math.random() * taunts.length)];
+      setDialogue(bossLine);
+    }
+    setChallengeReady(false);
+  };
+
+  const handleChallengeSubmit = () => {
+    if (!challengeQuestion || !challengeInput.trim()) return;
+    if (!onChallengeAnswer) return;
+
+    const normalized = challengeInput.toLowerCase().trim();
+    const correctAnswer = challengeQuestion.answer.toLowerCase();
+    const isCorrect = normalized === correctAnswer;
+
+    setLastResult({
+      correct: isCorrect,
+      answer: challengeQuestion.answer
+    });
+
+    if (isCorrect) {
+      triggerBossHit();
+    } else {
+      triggerPlayerHit();
+    }
+
+    onChallengeAnswer(isCorrect);
+
+    setChallengeActive(false);
+    setChallengeQuestion(null);
+    setChallengeInput("");
+    setIsPaused(false);
+  };
+
+  /* ---------------- RESET RESULT ON QUESTION CHANGE ---------------- */
   useEffect(() => {
     const id = setTimeout(() => {
       setLastResult(null);
     }, 1800);
     return () => clearTimeout(id);
-  }, [question]);
+  }, [question, challengeQuestion]);
 
   /* ---------------- PAUSE / BACK ---------------- */
   const handleTogglePause = () => {
-    if (gameStatus !== "playing") return;
+    if (gameStatus !== "playing" || challengeActive) return;
     setIsPaused((p) => !p);
   };
 
@@ -244,12 +337,16 @@ export default function GameScreen({
     ? Math.round((correctCount / questionCount) * 100)
     : 0;
 
+  const showingChallenge = challengeActive && challengeQuestion;
+
   return (
     <div className="game-container">
       <div className={`arena ${rumble ? "rumble" : ""}`}>
         {/* PLAYER */}
         <div
-          className={`character ${playerHit ? "shake" : ""}`}
+          className={`character player-character ${
+            playerHit ? "shake" : ""
+          }`}
           style={{ position: "relative" }}
         >
           <div className="health-container">
@@ -258,7 +355,16 @@ export default function GameScreen({
               style={{ width: `${playerHealthPercent}%` }}
             />
           </div>
-          <div className="sprite">🧑</div>
+          <div className="sprite">
+            <img
+              src="/player/player.png"
+              alt="Player"
+              className="player-body"
+            />
+          </div>
+          {projectileActive && (
+            <div className="projectile" />
+          )}
           {showPlayerBubble && (
             <div className="player-speech-bubble">{playerDialogue}</div>
           )}
@@ -270,7 +376,7 @@ export default function GameScreen({
             {boss.emoji} {boss.name}
           </h2>
 
-          {isPlaying && (
+          {isPlaying && !showingChallenge && (
             <>
               <div className="timer-number">{timeLeft}s</div>
               <div className="timer-bar">
@@ -305,6 +411,23 @@ export default function GameScreen({
                 </button>
               </div>
 
+              {challengeReady && (
+                <div className="challenge-row">
+                  <button
+                    className="challenge-button"
+                    onClick={startChallenge}
+                  >
+                    ⚡ Boss Challenge!
+                  </button>
+                  <button
+                    className="challenge-decline"
+                    onClick={declineChallenge}
+                  >
+                    Not Now
+                  </button>
+                </div>
+              )}
+
               <h3>{question?.question}</h3>
               <input
                 value={input}
@@ -319,21 +442,54 @@ export default function GameScreen({
                 Attack!
               </button>
 
-              {lastResult && (
+              {lastResult && !showingChallenge && (
                 <div
+                  className="result-banner"
                   style={{
-                    marginTop: "12px",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    background: lastResult.correct ? "green" : "darkred",
-                    border: "2px solid white",
-                    color: "white",
-                    fontWeight: "bold"
+                    background: lastResult.correct ? "green" : "darkred"
                   }}
                 >
                   {lastResult.correct
                     ? `Correct! Answer: ${lastResult.answer}`
                     : `Wrong! Correct Answer: ${lastResult.answer}`}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* BOSS CHALLENGE UI */}
+          {isPlaying && showingChallenge && (
+            <>
+              <div className="challenge-title">
+                ⚡ Boss Challenge Question ⚡
+              </div>
+              <p className="challenge-description">
+                Get it right: boss loses HALF HP.  
+                Get it wrong: you fall instantly!
+              </p>
+              <h3>{challengeQuestion.question}</h3>
+              <input
+                value={challengeInput}
+                onChange={(e) => setChallengeInput(e.target.value)}
+                placeholder="Type your mega answer..."
+              />
+              <button
+                onClick={handleChallengeSubmit}
+                disabled={!challengeInput.trim()}
+              >
+                Answer Challenge!
+              </button>
+
+              {lastResult && showingChallenge && (
+                <div
+                  className="result-banner"
+                  style={{
+                    background: lastResult.correct ? "green" : "darkred"
+                  }}
+                >
+                  {lastResult.correct
+                    ? `Epic! Answer: ${lastResult.answer}`
+                    : `Defeated! Correct Answer: ${lastResult.answer}`}
                 </div>
               )}
             </>
@@ -372,7 +528,9 @@ export default function GameScreen({
 
         {/* BOSS */}
         <div
-          className={`character ${bossHit ? "shake" : ""}`}
+          className={`character boss-character ${
+            bossHit ? "shake" : ""
+          }`}
           style={{ position: "relative" }}
         >
           <div className="speech-bubble">{finalDialogue}</div>
@@ -382,7 +540,12 @@ export default function GameScreen({
               style={{ width: `${bossHealthPercent}%` }}
             />
           </div>
-          <div className="sprite">
+          <div
+            className={`sprite boss-sprite ${
+              bossAttacking ? "boss-attack" : ""
+            }`}
+            style={{ transform: `scale(${bossScale})` }}
+          >
             {boss.image ? (
               <img
                 src={boss.image}
@@ -398,7 +561,6 @@ export default function GameScreen({
               boss.emoji
             )}
           </div>
-
         </div>
       </div>
 
