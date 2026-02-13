@@ -1,3 +1,4 @@
+// src/components/GameScreen.jsx
 import React, {
   useState,
   useEffect,
@@ -5,6 +6,7 @@ import React, {
   useMemo,
   useCallback
 } from "react";
+
 import { bosses } from "../data/bosses";
 import { playerLines } from "../data/playerLines";
 
@@ -47,12 +49,14 @@ export default function GameScreen({
   // Pause
   const [isPaused, setIsPaused] = useState(false);
 
+  // NEW: Show correct answer feedback
+  const [lastResult, setLastResult] = useState(null);
+
   /* ---------------- REFS ---------------- */
   const intervalRef = useRef(null);
   const onAnswerRef = useRef(onAnswer);
   const bossRef = useRef(boss);
   const isPausedRef = useRef(false);
-
   const tickSoundRef = useRef(null);
   const timeUpSoundRef = useRef(null);
 
@@ -83,7 +87,6 @@ export default function GameScreen({
     setBossHit(true);
     setRumble(true);
 
-    // Player bubble (correct)
     const line =
       playerLines.correct[
         Math.floor(Math.random() * playerLines.correct.length)
@@ -91,7 +94,6 @@ export default function GameScreen({
     setPlayerDialogue(line);
     setShowPlayerBubble(true);
 
-    // Boss reaction line
     const hitLines = bossRef.current.hitLines || [];
     if (hitLines.length > 0) {
       const bossLine =
@@ -99,7 +101,6 @@ export default function GameScreen({
       setDialogue(bossLine);
     }
 
-    // Shake ends quickly, bubble stays longer
     setTimeout(() => {
       setBossHit(false);
       setRumble(false);
@@ -114,7 +115,6 @@ export default function GameScreen({
     setPlayerHit(true);
     setRumble(true);
 
-    // Player bubble (wrong)
     const line =
       playerLines.wrong[
         Math.floor(Math.random() * playerLines.wrong.length)
@@ -122,7 +122,6 @@ export default function GameScreen({
     setPlayerDialogue(line);
     setShowPlayerBubble(true);
 
-    // Boss taunt
     const taunts = bossRef.current.taunts || [];
     if (taunts.length > 0) {
       const bossLine =
@@ -188,11 +187,36 @@ export default function GameScreen({
 
     const result = onAnswer(input);
 
-    if (result === "boss") triggerBossHit();
-    if (result === "player") triggerPlayerHit();
+    // NEW: Show correct answer feedback
+    if (result === "boss") {
+      setLastResult({
+        correct: true,
+        answer: question.answer
+      });
+      triggerBossHit();
+    } else if (result === "player") {
+      setLastResult({
+        correct: false,
+        answer: question.answer
+      });
+      triggerPlayerHit();
+    }
 
     setInput("");
   };
+
+  /* Reset result box when question changes */
+  useEffect(() => {
+    // Give time for the player to read the result
+    const id = setTimeout(() => {
+      setLastResult(null);
+    }, 1800); // matches your speech bubble timing
+
+    return () => clearTimeout(id);
+  }, [question]);
+
+
+
 
   /* ---------------- PAUSE / BACK ---------------- */
   const handleTogglePause = () => {
@@ -278,10 +302,7 @@ export default function GameScreen({
                   {isPaused ? "Resume" : "Pause"}
                 </button>
 
-                <button
-                  className="back-button"
-                  onClick={handleBackToBooks}
-                >
+                <button className="back-button" onClick={handleBackToBooks}>
                   Back to Books
                 </button>
               </div>
@@ -301,6 +322,25 @@ export default function GameScreen({
               >
                 Attack!
               </button>
+
+              {/* NEW: Correct Answer Feedback */}
+              {lastResult && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    background: lastResult.correct ? "green" : "darkred",
+                    border: "2px solid white",
+                    color: "white",
+                    fontWeight: "bold"
+                  }}
+                >
+                  {lastResult.correct
+                    ? `Correct! Answer: ${lastResult.answer}`
+                    : `Wrong! Correct Answer: ${lastResult.answer}`}
+                </div>
+              )}
             </>
           )}
 
