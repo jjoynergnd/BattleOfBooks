@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useCallback
 } from "react";
-
 import { bosses } from "../data/bosses";
 import { playerLines } from "../data/playerLines";
 
@@ -41,10 +40,18 @@ export default function GameScreen({
   const [rumble, setRumble] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
 
+  // Player bubble
+  const [playerDialogue, setPlayerDialogue] = useState("");
+  const [showPlayerBubble, setShowPlayerBubble] = useState(false);
+
+  // Pause
+  const [isPaused, setIsPaused] = useState(false);
+
   /* ---------------- REFS ---------------- */
   const intervalRef = useRef(null);
   const onAnswerRef = useRef(onAnswer);
   const bossRef = useRef(boss);
+  const isPausedRef = useRef(false);
 
   const tickSoundRef = useRef(null);
   const timeUpSoundRef = useRef(null);
@@ -58,6 +65,10 @@ export default function GameScreen({
     bossRef.current = boss;
   }, [boss]);
 
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
   /* Initialize sounds once */
   useEffect(() => {
     tickSoundRef.current = new Audio("/sounds/tick.mp3");
@@ -70,35 +81,66 @@ export default function GameScreen({
   /* ---------------- HIT EFFECTS ---------------- */
   const triggerBossHit = useCallback(() => {
     setBossHit(true);
-    setDialogue(
-      playerLines.correct[
-        Math.floor(Math.random() * playerLines.correct.length)
-      ]
-    );
     setRumble(true);
 
+    // Player bubble (correct)
+    const line =
+      playerLines.correct[
+        Math.floor(Math.random() * playerLines.correct.length)
+      ];
+    setPlayerDialogue(line);
+    setShowPlayerBubble(true);
+
+    // Boss reaction line
+    const hitLines = bossRef.current.hitLines || [];
+    if (hitLines.length > 0) {
+      const bossLine =
+        hitLines[Math.floor(Math.random() * hitLines.length)];
+      setDialogue(bossLine);
+    }
+
+    // Shake ends quickly, bubble stays longer
     setTimeout(() => {
       setBossHit(false);
       setRumble(false);
     }, 300);
+
+    setTimeout(() => {
+      setShowPlayerBubble(false);
+    }, 1200);
   }, []);
 
   const triggerPlayerHit = useCallback(() => {
     setPlayerHit(true);
-    setDialogue(
+    setRumble(true);
+
+    // Player bubble (wrong)
+    const line =
       playerLines.wrong[
         Math.floor(Math.random() * playerLines.wrong.length)
-      ]
-    );
-    setRumble(true);
+      ];
+    setPlayerDialogue(line);
+    setShowPlayerBubble(true);
+
+    // Boss taunt
+    const taunts = bossRef.current.taunts || [];
+    if (taunts.length > 0) {
+      const bossLine =
+        taunts[Math.floor(Math.random() * taunts.length)];
+      setDialogue(bossLine);
+    }
 
     setTimeout(() => {
       setPlayerHit(false);
       setRumble(false);
     }, 300);
+
+    setTimeout(() => {
+      setShowPlayerBubble(false);
+    }, 1200);
   }, []);
 
-  /* ---------------- TIMER INTERVAL EFFECT ---------------- */
+  /* ---------------- TIMER EFFECT ---------------- */
   useEffect(() => {
     if (gameStatus !== "playing") {
       clearInterval(intervalRef.current);
@@ -107,17 +149,22 @@ export default function GameScreen({
 
     clearInterval(intervalRef.current);
 
-    // Reset timer asynchronously (React 19 safe)
+    // Reset timer safely
     setTimeout(() => {
       setTimeLeft(60);
     }, 0);
 
     intervalRef.current = setInterval(() => {
       setTimeLeft((prev) => {
+        if (isPausedRef.current) return prev;
+
         if (prev === 11) {
           tickSoundRef.current?.play();
-          const taunts = bossRef.current.taunts;
-          setDialogue(taunts[Math.floor(Math.random() * taunts.length)]);
+          const taunts = bossRef.current.taunts || [];
+          if (taunts.length > 0) {
+            const t = taunts[Math.floor(Math.random() * taunts.length)];
+            setDialogue(t);
+          }
         }
 
         if (prev <= 1) {
@@ -137,7 +184,7 @@ export default function GameScreen({
 
   /* ---------------- SUBMIT ---------------- */
   const handleSubmit = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isPaused || gameStatus !== "playing") return;
 
     const result = onAnswer(input);
 
@@ -147,7 +194,19 @@ export default function GameScreen({
     setInput("");
   };
 
-  /* ---------------- WIN / LOSE DIALOGUE ---------------- */
+  /* ---------------- PAUSE / BACK ---------------- */
+  const handleTogglePause = () => {
+    if (gameStatus !== "playing") return;
+    setIsPaused((p) => !p);
+  };
+
+  const handleBackToBooks = () => {
+    clearInterval(intervalRef.current);
+    setIsPaused(false);
+    onRestart();
+  };
+
+  /* ---------------- FINAL DIALOGUE ---------------- */
   const finalDialogue =
     gameStatus === "win"
       ? boss.defeat
@@ -160,27 +219,37 @@ export default function GameScreen({
   const bossHealthPercent = (bossHP / 5) * 100;
   const timerPercent = (timeLeft / 60) * 100;
 
+  const isPlaying = gameStatus === "playing";
+
   return (
     <div className="game-container">
       <div className={`arena ${rumble ? "rumble" : ""}`}>
         {/* PLAYER */}
-        <div className={`character ${playerHit ? "shake" : ""}`}>
+        <div
+          className={`character ${playerHit ? "shake" : ""}`}
+          style={{ position: "relative" }}
+        >
           <div className="health-container">
             <div
               className="health-bar"
               style={{ width: `${playerHealthPercent}%` }}
             />
           </div>
+
           <div className="sprite">🧑</div>
+
+          {showPlayerBubble && (
+            <div className="player-speech-bubble">{playerDialogue}</div>
+          )}
         </div>
 
-        {/* CENTER QUESTION BOX */}
+        {/* QUESTION BOX */}
         <div className="question-box">
           <h2>
             {boss.emoji} {boss.name}
           </h2>
 
-          {gameStatus === "playing" && (
+          {isPlaying && (
             <>
               <div className="timer-number">{timeLeft}s</div>
 
@@ -201,15 +270,37 @@ export default function GameScreen({
                 />
               </div>
 
+              <div className="controls-row">
+                <button
+                  className="pause-button"
+                  onClick={handleTogglePause}
+                >
+                  {isPaused ? "Resume" : "Pause"}
+                </button>
+
+                <button
+                  className="back-button"
+                  onClick={handleBackToBooks}
+                >
+                  Back to Books
+                </button>
+              </div>
+
               <h3>{question?.question}</h3>
 
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type answer..."
+                disabled={isPaused}
               />
 
-              <button onClick={handleSubmit}>Attack!</button>
+              <button
+                onClick={handleSubmit}
+                disabled={isPaused || !input.trim()}
+              >
+                Attack!
+              </button>
             </>
           )}
 
@@ -228,8 +319,11 @@ export default function GameScreen({
           )}
         </div>
 
-        {/* BOSS WITH SPEECH BUBBLE */}
-        <div className={`character ${bossHit ? "shake" : ""}`} style={{ position: "relative" }}>
+        {/* BOSS */}
+        <div
+          className={`character ${bossHit ? "shake" : ""}`}
+          style={{ position: "relative" }}
+        >
           <div className="speech-bubble">{finalDialogue}</div>
 
           <div className="health-container boss-health">

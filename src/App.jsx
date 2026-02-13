@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useCallback } from "react";
 import BossSelect from "./components/BossSelect";
 import GameScreen from "./components/GameScreen";
@@ -28,19 +29,21 @@ function App() {
     return available[Math.floor(Math.random() * available.length)];
   }, []);
 
-  const startGame = useCallback((book) => {
-    playSound("loading.mp3");
+  const startGame = useCallback(
+    (book) => {
+      playSound("loading.mp3");
+      setSelectedBook(book);
+      setBossHP(5);
+      setPlayerHP(3);
+      setUsedQuestions([]);
 
-    setSelectedBook(book);
-    setBossHP(5);
-    setPlayerHP(3);
-    setUsedQuestions([]);
+      const firstQ = getRandomQuestion(book, []);
+      setCurrentQuestion(firstQ);
 
-    const firstQ = getRandomQuestion(book, []);
-    setCurrentQuestion(firstQ);
-
-    setGameStatus("playing");
-  }, [getRandomQuestion, playSound]);
+      setGameStatus("playing");
+    },
+    [getRandomQuestion, playSound]
+  );
 
   const handleAnswer = useCallback(
     (input) => {
@@ -56,7 +59,6 @@ function App() {
           playSound("lost.mp3");
           setGameStatus("lose");
         }
-
         return "player";
       }
 
@@ -117,6 +119,7 @@ function App() {
   );
 
   const restart = useCallback(() => {
+    // Reset everything for a clean return to select screen
     setGameStatus("select");
     setSelectedBook(null);
     setCurrentQuestion(null);
