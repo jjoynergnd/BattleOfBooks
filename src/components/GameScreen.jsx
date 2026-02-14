@@ -459,18 +459,23 @@ export default function GameScreen({
               )}
 
               <h3>{question?.question}</h3>
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type answer..."
-                disabled={isPaused}
-              />
-              <button
-                onClick={handleSubmit}
-                disabled={isPaused || !input.trim()}
-              >
-                Attack!
-              </button>
+
+              <div className="answer-row">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type answer..."
+                  disabled={isPaused}
+                />
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={isPaused || !input.trim()}
+                >
+                  Attack!
+                </button>
+              </div>
+
 
               {lastResult && !showingChallenge && (
                 <div
