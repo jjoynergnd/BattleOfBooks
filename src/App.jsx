@@ -32,6 +32,7 @@ export default function App() {
   const wrongSoundRef = useRef(null);
   const challengeSuccessSoundRef = useRef(null);
   const challengeFailSoundRef = useRef(null);
+  const winSoundRef = useRef(null); // NEW
 
   /* Load sounds once */
   React.useEffect(() => {
@@ -43,6 +44,10 @@ export default function App() {
     // Challenge sounds
     challengeSuccessSoundRef.current = new Audio("/sounds/challenge_success.mp3");
     challengeFailSoundRef.current = new Audio("/sounds/boss_challenge_win.mp3");
+
+    // NEW: Player win celebration sound
+    winSoundRef.current = new Audio("/sounds/win.mp3");
+    winSoundRef.current.volume = 0.7;
 
     // Volume tuning
     hitSoundRef.current.volume = 0.5;
@@ -61,6 +66,8 @@ export default function App() {
       challengeSuccessSoundRef.current?.play();
     } else if (type === "challengeFail") {
       challengeFailSoundRef.current?.play();
+    } else if (type === "playerWin") {
+      winSoundRef.current?.play(); // NEW
     }
   }, []);
 
@@ -92,14 +99,23 @@ export default function App() {
 
     if (correct) {
       playSound("hit");
+
       setBossHP((hp) => {
         const newHP = hp - 1;
-        if (newHP <= 0) setGameStatus("win");
+
+        // 🔥 NEW: Play win celebration sound when boss dies
+        if (newHP <= 0) {
+          playSound("playerWin");
+          setGameStatus("win");
+        }
+
         return newHP;
       });
+
       setCorrectCount((c) => c + 1);
     } else {
       playSound("wrong");
+
       setPlayerHP((hp) => {
         const newHP = hp - 1;
         if (newHP <= 0) setGameStatus("lose");
@@ -121,9 +137,15 @@ export default function App() {
       // Boss loses HALF HP
       setBossHP((hp) => {
         const newHP = hp - 4;
-        if (newHP <= 0) setGameStatus("win");
+
+        if (newHP <= 0) {
+          playSound("playerWin"); // NEW
+          setGameStatus("win");
+        }
+
         return newHP;
       });
+
       setCorrectCount((c) => c + 1);
     } else {
       playSound("challengeFail");
