@@ -5,6 +5,16 @@ import BossSelect from "./components/BossSelect";
 import GameScreen from "./components/GameScreen";
 import { questions } from "./data/questions";
 
+/* ---------------- SHUFFLE HELPER ---------------- */
+function shuffle(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function App() {
   const [selectedBook, setSelectedBook] = useState(null);
   const [bossHP, setBossHP] = useState(8);
@@ -13,6 +23,9 @@ export default function App() {
   const [correctCount, setCorrectCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [gameStatus, setGameStatus] = useState("select");
+
+  // NEW: store shuffled questions for this playthrough
+  const [shuffledQuestions, setShuffledQuestions] = useState([]);
 
   /* ---------------- SOUND REFS ---------------- */
   const hitSoundRef = useRef(null);
@@ -24,10 +37,10 @@ export default function App() {
   React.useEffect(() => {
     hitSoundRef.current = new Audio("/sounds/hit.mp3");
 
-    // WRONG SOUND FIX — use a guaranteed working file
+    // Wrong sound fallback (guaranteed working)
     wrongSoundRef.current = new Audio("/sounds/hit.mp3");
 
-    // NEW SOUNDS
+    // Challenge sounds
     challengeSuccessSoundRef.current = new Audio("/sounds/challenge_success.mp3");
     challengeFailSoundRef.current = new Audio("/sounds/boss_challenge_win.mp3");
 
@@ -54,6 +67,11 @@ export default function App() {
   /* ---------------- START GAME ---------------- */
   const handleSelect = (book) => {
     setSelectedBook(book);
+
+    // 🔥 Shuffle the book's questions once per playthrough
+    const pool = questions[book] || [];
+    setShuffledQuestions(shuffle(pool));
+
     setBossHP(8);
     setPlayerHP(3);
     setQuestionIndex(0);
@@ -66,8 +84,7 @@ export default function App() {
   const handleAnswer = (input) => {
     if (!selectedBook) return null;
 
-    const pool = questions[selectedBook];
-    const q = pool[questionIndex];
+    const q = shuffledQuestions[questionIndex];
     const normalized = input.toLowerCase().trim();
     const correct = normalized === q.answer.toLowerCase();
 
@@ -125,13 +142,14 @@ export default function App() {
     setQuestionIndex(0);
     setCorrectCount(0);
     setQuestionCount(0);
+    setShuffledQuestions([]);
     setGameStatus("select");
   };
 
   /* ---------------- CURRENT QUESTION ---------------- */
   const currentQuestion =
-    selectedBook && questions[selectedBook]
-      ? questions[selectedBook][questionIndex]
+    shuffledQuestions.length > 0
+      ? shuffledQuestions[questionIndex]
       : null;
 
   return (
