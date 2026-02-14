@@ -1,170 +1,143 @@
 // src/App.jsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
+import "./styles/game.css";
 import BossSelect from "./components/BossSelect";
 import GameScreen from "./components/GameScreen";
 import { questions } from "./data/questions";
-import "./styles/game.css";
 
-function App() {
+export default function App() {
   const [selectedBook, setSelectedBook] = useState(null);
   const [bossHP, setBossHP] = useState(8);
   const [playerHP, setPlayerHP] = useState(3);
-  const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [usedQuestions, setUsedQuestions] = useState([]);
-  const [gameStatus, setGameStatus] = useState("select");
-
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
+  const [gameStatus, setGameStatus] = useState("select");
 
-  const books = Object.keys(questions);
+  /* ---------------- SOUND REFS ---------------- */
+  const hitSoundRef = useRef(null);
+  const wrongSoundRef = useRef(null);
+  const challengeSuccessSoundRef = useRef(null);
+  const challengeFailSoundRef = useRef(null);
 
-  const playSound = useCallback((fileName) => {
-    const audio = new Audio(`/sounds/${fileName}`);
-    audio.volume = 0.6;
-    audio.play().catch(() => {});
+  /* Load sounds once */
+  React.useEffect(() => {
+    hitSoundRef.current = new Audio("/sounds/hit.mp3");
+
+    // WRONG SOUND FIX — use a guaranteed working file
+    wrongSoundRef.current = new Audio("/sounds/hit.mp3");
+
+    // NEW SOUNDS
+    challengeSuccessSoundRef.current = new Audio("/sounds/challenge_success.mp3");
+    challengeFailSoundRef.current = new Audio("/sounds/boss_challenge_win.mp3");
+
+    // Volume tuning
+    hitSoundRef.current.volume = 0.5;
+    wrongSoundRef.current.volume = 0.5;
+    challengeSuccessSoundRef.current.volume = 0.6;
+    challengeFailSoundRef.current.volume = 0.6;
   }, []);
 
-  const getRandomQuestion = useCallback((book, used) => {
-    const available = questions[book].filter(
-      (q) => !used.includes(q.question)
-    );
-    if (available.length === 0) return null;
-    return available[Math.floor(Math.random() * available.length)];
+  /* ---------------- PLAY SOUND ---------------- */
+  const playSound = useCallback((type) => {
+    if (type === "hit") {
+      hitSoundRef.current?.play();
+    } else if (type === "wrong") {
+      wrongSoundRef.current?.play();
+    } else if (type === "challengeSuccess") {
+      challengeSuccessSoundRef.current?.play();
+    } else if (type === "challengeFail") {
+      challengeFailSoundRef.current?.play();
+    }
   }, []);
 
-  const startGame = useCallback(
-    (book) => {
-      playSound("loading.mp3");
-      setSelectedBook(book);
-      setBossHP(8);
-      setPlayerHP(3);
-      setUsedQuestions([]);
-      setCorrectCount(0);
-      setQuestionCount(0);
-
-      const firstQ = getRandomQuestion(book, []);
-      setCurrentQuestion(firstQ);
-      setGameStatus("playing");
-    },
-    [getRandomQuestion, playSound]
-  );
-
-  const handleAnswer = useCallback(
-    (input) => {
-      if (!currentQuestion || gameStatus !== "playing") return null;
-
-      // TIMEOUT
-      if (input === "__timeout__") {
-        const newHP = playerHP - 1;
-        setPlayerHP(newHP);
-        playSound("hurt.mp3");
-
-        setQuestionCount((prev) => prev + 1);
-
-        if (newHP <= 0) {
-          playSound("lost.mp3");
-          setGameStatus("lose");
-        }
-        return "player";
-      }
-
-      const normalized = input.toLowerCase().trim();
-      const correctAnswer = currentQuestion.answer.toLowerCase();
-
-      let result = null;
-
-      if (normalized === correctAnswer) {
-        const newBossHP = bossHP - 1;
-        setBossHP(newBossHP);
-        playSound("hit.mp3");
-        result = "boss";
-
-        setCorrectCount((prev) => prev + 1);
-        setQuestionCount((prev) => prev + 1);
-
-        if (newBossHP <= 0) {
-          playSound("win.mp3");
-          setGameStatus("win");
-        }
-      } else {
-        const newHP = playerHP - 1;
-        setPlayerHP(newHP);
-        playSound("hurt.mp3");
-        result = "player";
-
-        setQuestionCount((prev) => prev + 1);
-
-        if (newHP <= 0) {
-          playSound("lost.mp3");
-          setGameStatus("lose");
-        }
-      }
-
-      const updatedUsed = [...usedQuestions, currentQuestion.question];
-      setUsedQuestions(updatedUsed);
-
-      if (
-        (result === "boss" && bossHP - 1 > 0) ||
-        (result === "player" && playerHP - 1 > 0)
-      ) {
-        const nextQ = getRandomQuestion(selectedBook, updatedUsed);
-        setCurrentQuestion(nextQ);
-      }
-
-      return result;
-    },
-    [
-      bossHP,
-      playerHP,
-      currentQuestion,
-      gameStatus,
-      usedQuestions,
-      selectedBook,
-      getRandomQuestion,
-      playSound
-    ]
-  );
-
-  const handleChallengeAnswer = useCallback(
-    (isCorrect) => {
-      if (gameStatus !== "playing") return;
-
-      if (isCorrect) {
-        const damage = Math.ceil(bossHP / 2);
-        const newBossHP = bossHP - damage;
-        setBossHP(newBossHP);
-        playSound("hit.mp3");
-
-        setCorrectCount((prev) => prev + 1);
-        setQuestionCount((prev) => prev + 1);
-
-        if (newBossHP <= 0) {
-          playSound("win.mp3");
-          setGameStatus("win");
-        }
-      } else {
-        setPlayerHP(0);
-        setQuestionCount((prev) => prev + 1);
-        playSound("lost.mp3");
-        setGameStatus("lose");
-      }
-    },
-    [bossHP, gameStatus, playSound]
-  );
-
-  const restart = useCallback(() => {
-    setGameStatus("select");
-    setSelectedBook(null);
-    setCurrentQuestion(null);
-    setUsedQuestions([]);
+  /* ---------------- START GAME ---------------- */
+  const handleSelect = (book) => {
+    setSelectedBook(book);
+    setBossHP(8);
+    setPlayerHP(3);
+    setQuestionIndex(0);
     setCorrectCount(0);
     setQuestionCount(0);
-  }, []);
+    setGameStatus("playing");
+  };
+
+  /* ---------------- NORMAL ANSWER ---------------- */
+  const handleAnswer = (input) => {
+    if (!selectedBook) return null;
+
+    const pool = questions[selectedBook];
+    const q = pool[questionIndex];
+    const normalized = input.toLowerCase().trim();
+    const correct = normalized === q.answer.toLowerCase();
+
+    setQuestionCount((c) => c + 1);
+
+    if (correct) {
+      playSound("hit");
+      setBossHP((hp) => {
+        const newHP = hp - 1;
+        if (newHP <= 0) setGameStatus("win");
+        return newHP;
+      });
+      setCorrectCount((c) => c + 1);
+    } else {
+      playSound("wrong");
+      setPlayerHP((hp) => {
+        const newHP = hp - 1;
+        if (newHP <= 0) setGameStatus("lose");
+        return newHP;
+      });
+    }
+
+    // Advance to next question
+    setQuestionIndex((i) => i + 1);
+
+    return correct ? "boss" : "player";
+  };
+
+  /* ---------------- BOSS CHALLENGE ANSWER ---------------- */
+  const handleChallengeAnswer = (isCorrect) => {
+    if (isCorrect) {
+      playSound("challengeSuccess");
+
+      // Boss loses HALF HP
+      setBossHP((hp) => {
+        const newHP = hp - 4;
+        if (newHP <= 0) setGameStatus("win");
+        return newHP;
+      });
+      setCorrectCount((c) => c + 1);
+    } else {
+      playSound("challengeFail");
+
+      // Player instantly loses
+      setPlayerHP(0);
+      setGameStatus("lose");
+    }
+  };
+
+  /* ---------------- RESTART ---------------- */
+  const handleRestart = () => {
+    setSelectedBook(null);
+    setBossHP(8);
+    setPlayerHP(3);
+    setQuestionIndex(0);
+    setCorrectCount(0);
+    setQuestionCount(0);
+    setGameStatus("select");
+  };
+
+  /* ---------------- CURRENT QUESTION ---------------- */
+  const currentQuestion =
+    selectedBook && questions[selectedBook]
+      ? questions[selectedBook][questionIndex]
+      : null;
 
   return (
-    <>
+    <div>
       {gameStatus === "select" && (
-        <BossSelect books={books} onSelect={startGame} />
+        <BossSelect books={Object.keys(questions)} onSelect={handleSelect} />
       )}
 
       {gameStatus !== "select" && (
@@ -175,14 +148,13 @@ function App() {
           question={currentQuestion}
           onAnswer={handleAnswer}
           gameStatus={gameStatus}
-          onRestart={restart}
+          onRestart={handleRestart}
           correctCount={correctCount}
           questionCount={questionCount}
           onChallengeAnswer={handleChallengeAnswer}
+          playSound={playSound}
         />
       )}
-    </>
+    </div>
   );
 }
-
-export default App;

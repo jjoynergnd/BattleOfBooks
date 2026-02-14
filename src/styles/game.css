@@ -501,3 +501,57 @@ body {
   margin-bottom: 10px;
   color: #ffddaa;
 }
+/* -------------------------------------------------- */
+/* BOSS FIREBALL PROJECTILE */
+/* -------------------------------------------------- */
+
+.boss-projectile {
+  position: absolute;
+  top: 40px; /* roughly center of boss sprite */
+  left: -20px; /* start slightly left of boss sprite */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, orange 0%, red 70%, darkred 100%);
+  box-shadow:
+    0 0 20px rgba(255, 80, 0, 0.9),
+    0 0 40px rgba(255, 40, 0, 0.6);
+  animation:
+    bossFireball 0.45s linear forwards,
+    bossFireballFlicker 0.2s infinite alternate;
+  z-index: 3; /* behind player sprite but above arena */
+  pointer-events: none;
+}
+
+@keyframes bossFireball {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(-350px) scale(1.1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(-500px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes bossFireballFlicker {
+  0% {
+    filter: brightness(1);
+  }
+  100% {
+    filter: brightness(1.3);
+  }
+}
+
+/* -------------------------------------------------- */
+/* PLAYER SPRITE Z-INDEX FIX (prevents disappearing) */
+/* -------------------------------------------------- */
+
+.player-character .sprite {
+  position: relative;
+  z-index: 5; /* ensures player is always above projectiles */
+}
